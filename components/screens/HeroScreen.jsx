@@ -8,89 +8,156 @@ import { motion } from 'framer-motion'
 const EASE = [0.16, 1, 0.3, 1]
 
 export default function HeroScreen({ onNavigate }) {
-  const heroRef = useRef(null)
-  const videoRef = useRef(null)
-  const indicatorRef = useRef(null)
+  // Refs for the architecture pieces
+  const heroRef = useRef(null)        // 300vh trigger container
+  const stickyRef = useRef(null)      // sticky 100vh pinned container
+  const videoRef = useRef(null)       // <video> element
+  const menuRef = useRef(null)        // handoff menu section
+  const indicatorRef = useRef(null)   // "scroll to enter" cue
+
   const [videoReady, setVideoReady] = useState(false)
   const [videoError, setVideoError] = useState(false)
 
   useEffect(() => {
     if (typeof window === 'undefined') return
+
+    // 1. Register the plugin
     gsap.registerPlugin(ScrollTrigger)
 
-    // Scroll to top when this screen mounts
-    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' })
+    // Always start the experience from the top
+    window.scrollTo({ top: 0, behavior: 'auto' })
 
     const video = videoRef.current
     const hero = heroRef.current
-    if (!video || !hero) return
+    const sticky = stickyRef.current
+    const menu = menuRef.current
 
+    if (!video || !hero || !sticky) return
+
+    // Defensive: ensure no autoplay (we drive playback strictly via scroll)
     video.pause()
     video.removeAttribute('autoplay')
 
-    let tween
+    // Hint the browser this video will be scrubbed
+    video.preload = 'auto'
 
-    const setup = () => {
+    // Holders so the cleanup closure can kill exactly what we created
+    let videoTimeline = null
+    let menuTween = null
+    let indicatorTween = null
+    let refreshTimer = null
+
+    // ─────────────────────────────────────────────
+    // 2. Init routine — runs ONLY after loadedmetadata
+    //    so video.duration is a real number
+    // ─────────────────────────────────────────────
+    const initScrollScrub = () => {
       const duration = video.duration
-      if (!duration || isNaN(duration) || !isFinite(duration)) return
+      if (!duration || isNaN(duration) || !isFinite(duration)) {
+        // Safety: if metadata didn't yield a duration, retry once
+        return
+      }
 
-      const proxy = { time: 0 }
-      tween = gsap.to(proxy, {
-        time: duration,
-        ease: 'none',
-        onUpdate: () => {
-          if (video.readyState >= 1) {
-            try {
-              video.currentTime = proxy.time
-            } catch (_) {}
-          }
-        },
+      // 3. The timeline pins the sticky container & scrubs the video
+      videoTimeline = gsap.timeline({
         scrollTrigger: {
           trigger: hero,
           start: 'top top',
           end: 'bottom bottom',
-          scrub: 0.4,
-          pin: video.parentElement,
-          pinSpacing: false,
-          anticipatePin: 1,
+          scrub: 1,                    // 1s catch-up — heavy & expensive feel
+          pin: sticky,                 // pin the sticky 100vh container
+          pinSpacing: false,           // menu sits right under the pin release
+          anticipatePin: 1,            // smoother pin on mobile
           invalidateOnRefresh: true,
+          // markers: true,            // uncomment for debugging
         },
       })
 
+      // 4. The actual scrub: tween currentTime from 0 → duration with no easing
+      videoTimeline.to(
+        video,
+        {
+          currentTime: duration,
+          ease: 'none',
+        },
+        0
+      )
+
+      // 5. The mobile handoff:
+      //    During the last 20% of the hero scroll, glide the menu section
+      //    upward so it visually rises over the bottom of the pinned video.
+      if (menu) {
+        gsap.set(menu, { y: 80 })
+        menuTween = gsap.to(menu, {
+          y: 0,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: hero,
+            start: 'bottom 110%',  // begins ~20% before the hero ends
+            end: 'bottom bottom',
+            scrub: 1,
+            invalidateOnRefresh: true,
+          },
+        })
+      }
+
+      // 6. Fade out the scroll indicator as the user begins scrolling
       if (indicatorRef.current) {
-        gsap.to(indicatorRef.current, {
+        indicatorTween = gsap.to(indicatorRef.current, {
           opacity: 0,
           y: 20,
           ease: 'none',
           scrollTrigger: {
             trigger: hero,
             start: 'top top',
-            end: '20% top',
+            end: '15% top',
             scrub: true,
           },
         })
       }
+
+      // Refresh after fonts / layout settle, in case anything shifted
+      refreshTimer = window.setTimeout(() => ScrollTrigger.refresh(), 250)
+
       setVideoReady(true)
     }
 
-    const onLoaded = () => setup()
+    // ─────────────────────────────────────────────
+    // Crucial safety check — wait for loadedmetadata
+    // ─────────────────────────────────────────────
+    const onLoadedMetadata = () => initScrollScrub()
     const onError = () => setVideoError(true)
 
     if (video.readyState >= 1 && video.duration && !isNaN(video.duration)) {
-      setup()
+      // Metadata is already available (e.g. cached)
+      initScrollScrub()
     } else {
-      video.addEventListener('loadedmetadata', onLoaded, { once: true })
+      video.addEventListener('loadedmetadata', onLoadedMetadata, { once: true })
       video.addEventListener('error', onError, { once: true })
+      // Force the browser to start loading metadata
+      try { video.load() } catch (_) {}
     }
 
-    // Refresh shortly after mount in case fonts/layout shifted
-    const refreshTimer = setTimeout(() => ScrollTrigger.refresh(), 250)
-
+    // ─────────────────────────────────────────────
+    // 7. Cleanup — kills everything we made, nothing else
+    // ─────────────────────────────────────────────
     return () => {
-      clearTimeout(refreshTimer)
-      video.removeEventListener('loadedmetadata', onLoaded)
+      if (refreshTimer) clearTimeout(refreshTimer)
+      video.removeEventListener('loadedmetadata', onLoadedMetadata)
       video.removeEventListener('error', onError)
-      if (tween) tween.kill()
+      if (videoTimeline) {
+        videoTimeline.scrollTrigger && videoTimeline.scrollTrigger.kill()
+        videoTimeline.kill()
+      }
+      if (menuTween) {
+        menuTween.scrollTrigger && menuTween.scrollTrigger.kill()
+        menuTween.kill()
+      }
+      if (indicatorTween) {
+        indicatorTween.scrollTrigger && indicatorTween.scrollTrigger.kill()
+        indicatorTween.kill()
+      }
+      // Defensive sweep
       ScrollTrigger.getAll().forEach((t) => t.kill())
     }
   }, [])
@@ -103,14 +170,25 @@ export default function HeroScreen({ onNavigate }) {
       transition={{ duration: 0.7, ease: EASE }}
       className="relative bg-[#FAF9F6]"
     >
-      {/* HERO 300vh */}
+      {/* ============================================== */}
+      {/* HERO — 300vh trigger container                  */}
+      {/* ============================================== */}
       <section
         ref={heroRef}
         className="relative w-full"
         style={{ height: '300vh' }}
         aria-label="Cinematic introduction"
       >
-        <div className="sticky top-0 h-screen w-full overflow-hidden bg-black">
+        {/* Pinned 100vh sticky container — overflow hidden */}
+        <div
+          ref={stickyRef}
+          className="sticky top-0 h-screen w-full overflow-hidden bg-black"
+          style={{
+            // mobile performance hints
+            willChange: 'transform',
+            transform: 'translateZ(0)',
+          }}
+        >
           <video
             ref={videoRef}
             src="/final_pasay.webm"
@@ -118,8 +196,18 @@ export default function HeroScreen({ onNavigate }) {
             muted
             playsInline
             preload="auto"
+            // iOS Safari inline-playback hint
+            // eslint-disable-next-line react/no-unknown-property
+            webkit-playsinline="true"
+            disablePictureInPicture
+            disableRemotePlayback
+            style={{
+              willChange: 'transform',
+              transform: 'translateZ(0)',
+            }}
           />
 
+          {/* Subtle cinematic gradient for text legibility */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
@@ -127,6 +215,7 @@ export default function HeroScreen({ onNavigate }) {
                 'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0.25) 65%, rgba(0,0,0,0.55) 100%)',
             }}
           />
+          {/* Vignette */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
@@ -135,6 +224,7 @@ export default function HeroScreen({ onNavigate }) {
             }}
           />
 
+          {/* Top brand mark */}
           <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-6 py-6">
             <div className="flex items-center gap-2">
               <div className="h-px w-6 bg-[#C5A880]/80" />
@@ -147,6 +237,7 @@ export default function HeroScreen({ onNavigate }) {
             </span>
           </div>
 
+          {/* Center title */}
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center">
             <p className="text-[9px] tracking-[0.55em] uppercase text-[#C5A880] mb-6 shimmer" style={{ fontWeight: 400 }}>
               — A Quiet Indulgence —
@@ -170,6 +261,7 @@ export default function HeroScreen({ onNavigate }) {
             </div>
           </div>
 
+          {/* Scroll-to-enter indicator */}
           <div
             ref={indicatorRef}
             className="absolute bottom-10 left-1/2 z-10 -translate-x-1/2 flex flex-col items-center gap-3"
@@ -182,6 +274,7 @@ export default function HeroScreen({ onNavigate }) {
             </div>
           </div>
 
+          {/* States */}
           {!videoReady && !videoError && (
             <div className="absolute bottom-3 right-3 z-10 text-[9px] tracking-[0.3em] uppercase text-white/40">
               Preparing…
@@ -195,11 +288,16 @@ export default function HeroScreen({ onNavigate }) {
         </div>
       </section>
 
-      {/* MENU HANDOFF */}
+      {/* ============================================== */}
+      {/* MENU HANDOFF — glides up over the pinned video  */}
+      {/* ============================================== */}
       <section
+        ref={menuRef}
         className="relative z-20 -mt-10 rounded-t-3xl bg-[#FAF9F6]"
         style={{
-          boxShadow: '0 -30px 60px -20px rgba(62, 54, 46, 0.25), 0 -2px 0 0 rgba(197, 168, 128, 0.15)',
+          boxShadow:
+            '0 -30px 60px -20px rgba(62, 54, 46, 0.25), 0 -2px 0 0 rgba(197, 168, 128, 0.15)',
+          willChange: 'transform',
         }}
       >
         <div className="flex justify-center pt-5">
