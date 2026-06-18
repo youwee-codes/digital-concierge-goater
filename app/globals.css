@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --alabaster: #FAF9F6;
+  --linen: #F3F0EA;
+  --walnut: #3E362E;
+  --champagne: #C5A880;
+  --muted-green: #8A9A8B;
+}
+
+html,
+body {
+  background-color: var(--alabaster);
+  color: var(--walnut);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: 0.01em;
+}
+
+.font-serif-display {
+  font-family: var(--font-playfair), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.font-serif-elegant {
+  font-family: var(--font-cormorant), Georgia, serif;
+  font-weight: 300;
+  letter-spacing: 0.02em;
+}
+
+/* Hide default scrollbar elegantly */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(197, 168, 128, 0.35);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(197, 168, 128, 0.6);
+}
+
+/* Subtle shimmer for the gold divider */
+@keyframes shimmer {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+.shimmer {
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* Scroll indicator pulse */
+@keyframes scroll-pulse {
+  0% { transform: translateY(0); opacity: 0.9; }
+  50% { transform: translateY(8px); opacity: 0.4; }
+  100% { transform: translateY(0); opacity: 0.9; }
+}
+.scroll-pulse {
+  animation: scroll-pulse 2.4s ease-in-out infinite;
+}
