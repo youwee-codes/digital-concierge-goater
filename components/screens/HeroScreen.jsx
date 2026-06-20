@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { motion } from 'framer-motion'
@@ -11,140 +11,136 @@ export default function HeroScreen({ onNavigate }) {
   // Refs for the architecture pieces
   const heroRef = useRef(null)        // 300vh trigger container
   const stickyRef = useRef(null)      // sticky 100vh pinned container
-  const videoRef = useRef(null)       // <video> element
+  const canvasRef = useRef(null)      // <canvas> element replacing video
   const menuRef = useRef(null)        // handoff menu section
   const indicatorRef = useRef(null)   // "scroll to enter" cue
 
   const [videoReady, setVideoReady] = useState(false)
-  const [videoError, setVideoError] = useState(false)
+  const frameCount = 178; // Exact frames from FFmpeg
 
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // 1. Register the plugin
+    // Register the plugin
     gsap.registerPlugin(ScrollTrigger)
 
     // Always start the experience from the top
     window.scrollTo({ top: 0, behavior: 'auto' })
 
-    const video = videoRef.current
+    const canvas = canvasRef.current
     const hero = heroRef.current
     const sticky = stickyRef.current
     const menu = menuRef.current
 
-    if (!video || !hero || !sticky) return
+    if (!canvas || !hero || !sticky) return
 
-    // Defensive: ensure no autoplay (we drive playback strictly via scroll)
-    video.pause()
-    video.removeAttribute('autoplay')
+    const context = canvas.getContext("2d");
+    
+    // Set native resolution of your AI video frames
+    canvas.width = 720;
+    canvas.height = 1280;
 
-    // Hint the browser this video will be scrubbed
-    video.preload = 'auto'
+    // Preload the image sequence
+    const images = [];
+    const sequence = { frame: 0 };
+    let loadedCount = 0;
 
-    // Holders so the cleanup closure can kill exactly what we created
+    const currentFrame = (index) =>
+      `/frames/frame_${(index + 1).toString().padStart(4, "0")}.jpg`;
+
+    for (let i = 0; i < frameCount; i++) {
+      const img = new Image();
+      img.src = currentFrame(i);
+      img.onload = () => {
+        loadedCount++;
+        // Draw the first frame immediately when it loads
+        if (loadedCount === 1) {
+          context.drawImage(images[0], 0, 0, canvas.width, canvas.height);
+          setVideoReady(true);
+        }
+      };
+      images.push(img);
+    }
+
+    // Holders for cleanup
     let videoTimeline = null
     let menuTween = null
     let indicatorTween = null
     let refreshTimer = null
 
     // ─────────────────────────────────────────────
-    // 2. Init routine — runs ONLY after loadedmetadata
-    //    so video.duration is a real number
+    // The Flipbook Scrub Timeline
     // ─────────────────────────────────────────────
-    const initScrollScrub = () => {
-      const duration = video.duration
-      if (!duration || isNaN(duration) || !isFinite(duration)) {
-        // Safety: if metadata didn't yield a duration, retry once
-        return
-      }
+    videoTimeline = gsap.timeline({
+      scrollTrigger: {
+        trigger: hero,
+        start: 'top top',
+        end: 'bottom bottom',
+        scrub: 1,                    // 1s catch-up — heavy & expensive feel
+        pin: sticky,                 // pin the sticky 100vh container
+        pinSpacing: false,           // menu sits right under the pin release
+        anticipatePin: 1,            // smoother pin on mobile
+        invalidateOnRefresh: true,
+      },
+    })
 
-      // 3. The timeline pins the sticky container & scrubs the video
-      videoTimeline = gsap.timeline({
+    // Scrub the sequence from 0 to 177
+    videoTimeline.to(
+      sequence,
+      {
+        frame: frameCount - 1,
+        snap: "frame",
+        ease: 'none',
+        onUpdate: () => {
+          if (images[sequence.frame]) {
+            context.drawImage(images[sequence.frame], 0, 0, canvas.width, canvas.height);
+          }
+        }
+      },
+      0
+    )
+
+    // ─────────────────────────────────────────────
+    // The Mobile Handoff (Emergent's exact logic)
+    // ─────────────────────────────────────────────
+    if (menu) {
+      gsap.set(menu, { y: 80 })
+      menuTween = gsap.to(menu, {
+        y: 0,
+        ease: 'none',
+        scrollTrigger: {
+          trigger: hero,
+          start: 'bottom 110%',  // begins ~20% before the hero ends
+          end: 'bottom bottom',
+          scrub: 1,
+          invalidateOnRefresh: true,
+        },
+      })
+    }
+
+    // Fade out the scroll indicator
+    if (indicatorRef.current) {
+      indicatorTween = gsap.to(indicatorRef.current, {
+        opacity: 0,
+        y: 20,
+        ease: 'none',
         scrollTrigger: {
           trigger: hero,
           start: 'top top',
-          end: 'bottom bottom',
-          scrub: 1,                    // 1s catch-up — heavy & expensive feel
-          pin: sticky,                 // pin the sticky 100vh container
-          pinSpacing: false,           // menu sits right under the pin release
-          anticipatePin: 1,            // smoother pin on mobile
-          invalidateOnRefresh: true,
-          // markers: true,            // uncomment for debugging
+          end: '15% top',
+          scrub: true,
         },
       })
-
-      // 4. The actual scrub: tween currentTime from 0 → duration with no easing
-      videoTimeline.to(
-        video,
-        {
-          currentTime: duration,
-          ease: 'none',
-        },
-        0
-      )
-
-      // 5. The mobile handoff:
-      //    During the last 20% of the hero scroll, glide the menu section
-      //    upward so it visually rises over the bottom of the pinned video.
-      if (menu) {
-        gsap.set(menu, { y: 80 })
-        menuTween = gsap.to(menu, {
-          y: 0,
-          ease: 'none',
-          scrollTrigger: {
-            trigger: hero,
-            start: 'bottom 110%',  // begins ~20% before the hero ends
-            end: 'bottom bottom',
-            scrub: 1,
-            invalidateOnRefresh: true,
-          },
-        })
-      }
-
-      // 6. Fade out the scroll indicator as the user begins scrolling
-      if (indicatorRef.current) {
-        indicatorTween = gsap.to(indicatorRef.current, {
-          opacity: 0,
-          y: 20,
-          ease: 'none',
-          scrollTrigger: {
-            trigger: hero,
-            start: 'top top',
-            end: '15% top',
-            scrub: true,
-          },
-        })
-      }
-
-      // Refresh after fonts / layout settle, in case anything shifted
-      refreshTimer = window.setTimeout(() => ScrollTrigger.refresh(), 250)
-
-      setVideoReady(true)
     }
 
-    // ─────────────────────────────────────────────
-    // Crucial safety check — wait for loadedmetadata
-    // ─────────────────────────────────────────────
-    const onLoadedMetadata = () => initScrollScrub()
-    const onError = () => setVideoError(true)
-
-    if (video.readyState >= 1 && video.duration && !isNaN(video.duration)) {
-      // Metadata is already available (e.g. cached)
-      initScrollScrub()
-    } else {
-      video.addEventListener('loadedmetadata', onLoadedMetadata, { once: true })
-      video.addEventListener('error', onError, { once: true })
-      // Force the browser to start loading metadata
-      try { video.load() } catch (_) {}
-    }
+    // Refresh after fonts / layout settle
+    refreshTimer = window.setTimeout(() => ScrollTrigger.refresh(), 250)
 
     // ─────────────────────────────────────────────
-    // 7. Cleanup — kills everything we made, nothing else
+    // Cleanup
     // ─────────────────────────────────────────────
     return () => {
       if (refreshTimer) clearTimeout(refreshTimer)
-      video.removeEventListener('loadedmetadata', onLoadedMetadata)
-      video.removeEventListener('error', onError)
       if (videoTimeline) {
         videoTimeline.scrollTrigger && videoTimeline.scrollTrigger.kill()
         videoTimeline.kill()
@@ -157,7 +153,6 @@ export default function HeroScreen({ onNavigate }) {
         indicatorTween.scrollTrigger && indicatorTween.scrollTrigger.kill()
         indicatorTween.kill()
       }
-      // Defensive sweep
       ScrollTrigger.getAll().forEach((t) => t.kill())
     }
   }, [])
@@ -168,7 +163,7 @@ export default function HeroScreen({ onNavigate }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, scale: 0.97, filter: 'blur(6px)' }}
       transition={{ duration: 0.7, ease: EASE }}
-      className="relative bg-[#FAF9F6]"
+      className="relative bg-[#FAF9F6] font-sans"
     >
       {/* ============================================== */}
       {/* HERO — 300vh trigger container                  */}
@@ -184,23 +179,14 @@ export default function HeroScreen({ onNavigate }) {
           ref={stickyRef}
           className="sticky top-0 h-screen w-full overflow-hidden bg-black"
           style={{
-            // mobile performance hints
             willChange: 'transform',
             transform: 'translateZ(0)',
           }}
         >
-          <video
-            ref={videoRef}
-            src="/final_pasay.webm"
+          {/* THE ENTERPRISE FLIPBOOK FIX */}
+          <canvas
+            ref={canvasRef}
             className="absolute inset-0 h-full w-full object-cover"
-            muted
-            playsInline
-            preload="auto"
-            // iOS Safari inline-playback hint
-            // eslint-disable-next-line react/no-unknown-property
-            webkit-playsinline="true"
-            disablePictureInPicture
-            disableRemotePlayback
             style={{
               willChange: 'transform',
               transform: 'translateZ(0)',
@@ -275,14 +261,9 @@ export default function HeroScreen({ onNavigate }) {
           </div>
 
           {/* States */}
-          {!videoReady && !videoError && (
+          {!videoReady && (
             <div className="absolute bottom-3 right-3 z-10 text-[9px] tracking-[0.3em] uppercase text-white/40">
               Preparing…
-            </div>
-          )}
-          {videoError && (
-            <div className="absolute bottom-3 right-3 z-10 text-[9px] tracking-[0.3em] uppercase text-white/50">
-              Video unavailable
             </div>
           )}
         </div>
