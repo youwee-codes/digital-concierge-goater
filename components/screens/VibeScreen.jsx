@@ -1,106 +1,244 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { ChevronLeft } from 'lucide-react'
+import React, { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useCart } from '@/context/CartContext'
+import CheckoutDrawer from '@/components/ui/CheckoutDrawer'
 
-const EASE = [0.16, 1, 0.3, 1]
-
-const VIBES = [
-  { mood: 'Contemplative', hint: 'Quiet, unhurried, deep' },
-  { mood: 'Effervescent', hint: 'Bright, awake, alive' },
-  { mood: 'Romantic', hint: 'Warm, intimate, soft' },
-  { mood: 'Restorative', hint: 'Calm, grounded, herbal' },
-  { mood: 'Celebratory', hint: 'Rich, indulgent, rare' },
+// 1. THE MOODS (Step 1)
+const moods = [
+  { id: 'm_date', emoji: '🕯️', title: 'Date Night', subtitle: 'Rich, creamy, and perfect for sharing.' },
+  { id: 'm_hang', emoji: '👯‍♀️', title: 'The Hangout', subtitle: 'Crispy, crunchy, and built for the table.' },
+  { id: 'm_work', emoji: '💻', title: 'Deep Work', subtitle: 'Clean energy and focused sipping.' },
+  { id: 'm_hurt', emoji: '💔', title: 'Heartbreak Remedy', subtitle: 'Sweet comfort. Calories do not count.' },
+  { id: 'm_clean', emoji: '🌿', title: 'Clean & Serene', subtitle: 'Fresh, vibrant, and guilt-free.' }
 ]
 
+// 2. THE CURATED ITEMS (Step 2)
+const vibeItems = {
+  'm_date': [
+    { id: 'v_dn1', title: 'The Romance Duo', description: 'Truffle Mushroom Risotto & Classic Chicken Alfredo. Rich, creamy, and perfect for sharing.', price: '₹1130', diet: 'non-veg' },
+    { id: 'v_dn2', title: 'Midnight Sweetheart', description: 'Classic Basque Cheesecake paired with two glasses of Fresh Peach Iced Tea.', price: '₹950', diet: 'veg' },
+  ],
+  'm_hang': [
+    { id: 'v_ho1', title: 'The Catch-Up Platter', description: 'Artisanal Burrata Margherita, Honey Sriracha Wings, and Parmesan Truffle Fries.', price: '₹1348', diet: 'non-veg' },
+    { id: 'v_ho2', title: 'Crisp & Chill', description: 'Crispy Calamari Rings and Pull-Apart Garlic Bread for the table.', price: '₹798', diet: 'non-veg' },
+  ],
+  'm_work': [
+    { id: 'v_dw1', title: 'The Focus Fuel', description: 'Our signature Pasay Cold Brew paired with a nutrient-dense Smashed Avocado Sourdough.', price: '₹649', diet: 'veg' },
+  ],
+  'm_hurt': [
+    { id: 'v_hr1', title: 'Sweet Comfort', description: 'Classic Basque Cheesecake, Dark Chocolate Sea Salt Cookie, and Signature Hot Chocolate.', price: '₹950', diet: 'veg' },
+  ],
+  'm_clean': [
+    { id: 'v_cs1', title: 'The Reset', description: 'Chilled Acai Superfood Bowl and a Fresh Watermelon Mint Cooler.', price: '₹779', diet: 'vegan' },
+  ]
+}
+
 export default function VibeScreen({ onNavigate }) {
+  const { cart, addToCart, removeFromCart, totalItems, totalPrice } = useCart()
+  const [isCartOpen, setIsCartOpen] = useState(false)
+  
+  // Controls Step 1 (Moods) vs Step 2 (Menu)
+  const [selectedMood, setSelectedMood] = useState(null)
+  
+  // Controls the Standard Menu Accordion UI
+  const [expandedId, setExpandedId] = useState(null)
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 24, scale: 1.02, filter: 'blur(8px)' }}
-      animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-      exit={{ opacity: 0, scale: 0.97, filter: 'blur(6px)' }}
-      transition={{ duration: 0.9, ease: EASE, delay: 0.05 }}
-      className="relative min-h-screen bg-[#F3F0EA]"
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }} 
+      animate={{ opacity: 1, y: 0 }} 
+      exit={{ opacity: 0, y: -20 }}
+      className="min-h-screen bg-[#3E362E] font-sans pb-32"
     >
-      <header className="sticky top-0 z-30 bg-[#F3F0EA]/85 backdrop-blur-md border-b border-[#C5A880]/15">
-        <div className="flex items-center justify-between px-5 py-5">
-          <button
-            onClick={() => onNavigate('hero')}
-            className="flex items-center gap-2 text-[#3E362E]/70 hover:text-[#3E362E] transition-colors group"
+      {/* 🌑 DARK MODE HEADER */}
+      <header className="sticky top-0 z-50 bg-[#3E362E]/90 backdrop-blur-md border-b border-[#C5A880]/20 px-6 py-5">
+        <div className="flex justify-between items-center mb-4">
+          <button 
+            onClick={() => onNavigate('home')}
+            className="text-[#C5A880] text-[10px] font-bold tracking-widest uppercase flex items-center gap-2"
           >
-            <ChevronLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
-            <span className="text-[9px] tracking-[0.4em] uppercase" style={{ fontWeight: 400 }}>
-              Back
-            </span>
+            ← Home
           </button>
-          <span className="text-[9px] tracking-[0.5em] uppercase text-[#C5A880]" style={{ fontWeight: 500 }}>
-            The Vibe
-          </span>
-          <div className="w-12" />
+          <button 
+            onClick={() => onNavigate('menu')}
+            className="text-[#FAF9F6]/70 hover:text-[#FAF9F6] text-[9px] font-bold tracking-widest uppercase border border-[#FAF9F6]/20 px-4 py-2 rounded-full"
+          >
+            Standard Menu
+          </button>
         </div>
+        <h1 className="font-serif text-3xl text-[#FAF9F6]">
+          {!selectedMood ? 'Set the ' : 'The '}
+          <span className="italic text-[#C5A880]">
+            {!selectedMood ? 'Mood' : selectedMood.title}
+          </span>
+        </h1>
       </header>
 
-      <div className="px-6 pt-12 pb-24">
-        <div className="flex items-center justify-center gap-3 mb-5">
-          <span className="h-px w-8 bg-[#C5A880]/60" />
-          <span className="text-[9px] tracking-[0.55em] uppercase text-[#C5A880]" style={{ fontWeight: 500 }}>
-            Tell us
-          </span>
-          <span className="h-px w-8 bg-[#C5A880]/60" />
-        </div>
-
-        <h1
-          className="font-serif-display text-center text-5xl text-[#3E362E] leading-[1.02] tracking-tight"
-          style={{ fontWeight: 400 }}
-        >
-          How do you{' '}
-          <em className="font-serif-elegant italic text-[#8A9A8B]" style={{ fontStyle: 'italic', fontWeight: 300 }}>
-            feel
-          </em>{' '}
-          this hour?
-        </h1>
-
-        <p className="mt-6 text-center text-[#3E362E]/65 text-sm max-w-xs mx-auto leading-relaxed" style={{ fontWeight: 300 }}>
-          Choose a mood. We will compose something in quiet harmony with it.
-        </p>
-
-        <div className="mt-14 grid grid-cols-1 gap-3">
-          {VIBES.map((v, idx) => (
-            <motion.button
-              key={v.mood}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 + idx * 0.07, duration: 0.7, ease: EASE }}
-              className="group relative w-full overflow-hidden rounded-2xl bg-[#FAF9F6] border border-[#C5A880]/20 px-6 py-5 text-left transition-all duration-500 hover:border-[#C5A880]/60 hover:shadow-[0_10px_40px_-15px_rgba(197,168,128,0.4)] active:scale-[0.99]"
+      {/* 🔄 DYNAMIC BODY */}
+      <div className="px-6 py-6">
+        <AnimatePresence mode="wait">
+          
+          {/* STEP 1: CHOOSE A MOOD */}
+          {!selectedMood ? (
+            <motion.div 
+              key="mood-selector"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="flex flex-col gap-4"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <div
-                    className="font-serif-display text-2xl text-[#3E362E] leading-tight"
-                    style={{ fontWeight: 400 }}
-                  >
-                    {v.mood}
+              <p className="text-sm text-[#FAF9F6]/60 mb-2">How is the vibe tonight?</p>
+              {moods.map(mood => (
+                <button
+                  key={mood.id}
+                  onClick={() => setSelectedMood(mood)}
+                  className="w-full bg-[#FAF9F6]/5 border border-[#C5A880]/20 rounded-2xl p-5 flex items-center gap-5 text-left hover:bg-[#C5A880]/10 transition-colors active:scale-[0.98]"
+                >
+                  <span className="text-3xl">{mood.emoji}</span>
+                  <div className="flex flex-col gap-1">
+                    <h3 className="font-serif text-xl text-[#C5A880]">{mood.title}</h3>
+                    <p className="text-[10px] uppercase tracking-widest text-[#FAF9F6]/50">{mood.subtitle}</p>
                   </div>
-                  <div className="text-[9px] tracking-[0.35em] uppercase text-[#3E362E]/45 mt-1" style={{ fontWeight: 400 }}>
-                    {v.hint}
-                  </div>
+                </button>
+              ))}
+            </motion.div>
+          ) : (
+            
+            /* STEP 2: ACCORDION MENU (Mimics Standard Menu) */
+            <motion.div 
+              key="vibe-menu"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+              className="flex flex-col"
+            >
+             {/* ✨ EDITORIAL 'CHANGE MOOD' BUTTON */}
+              <button 
+                onClick={() => setSelectedMood(null)}
+                className="group flex items-center gap-3 w-fit mb-10 active:scale-95 transition-transform"
+              >
+                {/* Circular Arrow Container */}
+                <div className="flex items-center justify-center w-9 h-9 rounded-full bg-[#FAF9F6]/5 border border-[#FAF9F6]/10 group-hover:bg-[#C5A880] group-hover:border-[#C5A880] transition-all duration-300 shadow-sm">
+                  <span className="text-[#FAF9F6] group-hover:text-[#3E362E] text-lg font-light leading-none mb-0.5">
+                    ←
+                  </span>
                 </div>
-                <span className="text-[#C5A880] text-lg opacity-0 -translate-x-2 transition-all duration-500 group-hover:opacity-100 group-hover:translate-x-0">
-                  →
+                {/* Text */}
+                <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#FAF9F6]/70 group-hover:text-[#C5A880] transition-colors duration-300">
+                  Change Mood
                 </span>
-              </div>
-            </motion.button>
-          ))}
-        </div>
+              </button>
 
-        <div className="mt-16 flex items-center justify-center gap-3">
-          <span className="h-px w-10 bg-[#3E362E]/15" />
-          <span className="text-[9px] tracking-[0.5em] uppercase text-[#3E362E]/40" style={{ fontWeight: 400 }}>
-            ❦
-          </span>
-          <span className="h-px w-10 bg-[#3E362E]/15" />
-        </div>
+              <div className="flex flex-col">
+                {vibeItems[selectedMood.id].map(item => {
+                  const cartItem = cart.find(c => c.id === item.id)
+                  const quantity = cartItem ? cartItem.quantity : 0
+                  const isExpanded = expandedId === item.id
+
+                  return (
+                    <div key={item.id} className="border-b border-[#FAF9F6]/10">
+                      
+                      {/* ACCORDION HEADER */}
+                      <button 
+                        onClick={() => setExpandedId(isExpanded ? null : item.id)}
+                        className="w-full py-6 flex justify-between items-center text-left"
+                      >
+                        <div className="flex flex-col gap-1 pr-4">
+                          <h3 className="font-serif text-lg text-[#C5A880]">{item.title}</h3>
+                          <span className="font-medium text-[#FAF9F6] text-sm">{item.price}</span>
+                        </div>
+                        <span className="text-[#C5A880] text-2xl font-light">
+                          {isExpanded ? '−' : '+'}
+                        </span>
+                      </button>
+
+                      {/* ACCORDION BODY (Image & Controls) */}
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div 
+                            initial={{ height: 0, opacity: 0 }} 
+                            animate={{ height: 'auto', opacity: 1 }} 
+                            exit={{ height: 0, opacity: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="pb-6 flex flex-col gap-5">
+                              
+                              {/* 📸 IMAGE PLACEHOLDER (Matches Standard Menu) */}
+                              <div className="w-full h-48 bg-[#FAF9F6]/5 rounded-xl border border-[#FAF9F6]/10 flex flex-col items-center justify-center gap-2">
+                                <span className="text-2xl opacity-50">📷</span>
+                                <span className="text-[#FAF9F6]/30 text-[9px] tracking-[0.2em] uppercase font-bold">
+                                  Image Loads Here
+                                </span>
+                              </div>
+
+                              <p className="text-xs text-[#FAF9F6]/70 leading-relaxed">
+                                {item.description}
+                              </p>
+
+                              <div className="flex justify-between items-center pt-2">
+                                <span className={`text-[9px] uppercase tracking-widest px-2 py-1 rounded-sm ${
+                                  item.diet === 'veg' || item.diet === 'vegan' ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'
+                                }`}>
+                                  {item.diet}
+                                </span>
+
+                                {/* ADD TO CART CONTROLS */}
+                                {quantity === 0 ? (
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); addToCart(item); }}
+                                    className="text-[10px] uppercase tracking-widest font-bold bg-[#FAF9F6]/10 text-[#C5A880] px-6 py-2.5 rounded-full hover:bg-[#C5A880] hover:text-[#3E362E] transition-colors"
+                                  >
+                                    Add +
+                                  </button>
+                                ) : (
+                                  <div className="flex items-center gap-4 bg-[#FAF9F6]/10 rounded-full px-4 py-1.5" onClick={e => e.stopPropagation()}>
+                                    <button onClick={() => removeFromCart(item.id)} className="text-[#FAF9F6]/70 hover:text-[#FAF9F6] text-lg leading-none active:scale-90">−</button>
+                                    <span className="text-[#C5A880] font-bold text-xs w-4 text-center">{quantity}</span>
+                                    <button onClick={() => addToCart(item)} className="text-[#FAF9F6]/70 hover:text-[#FAF9F6] text-lg leading-none active:scale-90">+</button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
+
+      {/* 🛒 FLOATING CART BUTTON */}
+      <AnimatePresence>
+        {totalItems > 0 && (
+          <motion.div 
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            className="fixed bottom-6 left-6 right-6 z-40"
+          >
+            <button 
+              onClick={() => setIsCartOpen(true)}
+              className="w-full bg-[#C5A880] text-[#3E362E] py-4 px-6 rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.5)] flex justify-between items-center active:scale-95 transition-transform"
+            >
+              <div className="flex items-center gap-3">
+                <span className="w-6 h-6 bg-[#3E362E] text-[#C5A880] rounded-full text-xs font-bold flex items-center justify-center">
+                  {totalItems}
+                </span>
+                <span className="text-[10px] font-bold tracking-[0.1em] uppercase">View Collection</span>
+              </div>
+              <span className="font-serif font-bold text-sm">₹{totalPrice.toLocaleString('en-IN')}</span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <CheckoutDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </motion.div>
   )
 }

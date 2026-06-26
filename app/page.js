@@ -1,54 +1,38 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
-import { AnimatePresence } from 'framer-motion'
+import { useState } from 'react'
 import HeroScreen from '@/components/screens/HeroScreen'
 import MenuScreen from '@/components/screens/MenuScreen'
-import VibeScreen from '@/components/screens/VibeScreen'
-import TransitionVeil from '@/components/TransitionVeil'
+import VibeScreen from '@/components/screens/VibeScreen' // ✨ 1. Imported the new Vibe Screen
+import { CartProvider } from '@/context/CartContext' 
 
 export default function Page() {
   const [screen, setScreen] = useState('hero')
-  const [veilActive, setVeilActive] = useState(false)
 
-  // Orchestrated navigation: veil up → swap screen → veil down
-  const navigate = useCallback(
-    (next) => {
-      if (next === screen) return
-      setVeilActive(true)
-      // Swap screens right after the veil fully covers (~40% of 1.6s = 640ms)
-      window.setTimeout(() => {
-        setScreen(next)
-        window.scrollTo({ top: 0, behavior: 'auto' })
-      }, 640)
-      // Drop the veil node after the full sequence
-      window.setTimeout(() => {
-        setVeilActive(false)
-      }, 1700)
-    },
-    [screen]
-  )
+  // The Raw, Unfiltered Native Swap
+  const navigate = (next) => {
+    // ✨ Safety catch: If a component asks for 'home', route it to 'hero'
+    const targetScreen = next === 'home' ? 'hero' : next;
 
-  // Lock scroll while the veil is fully covering
-  useEffect(() => {
-    if (veilActive) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [veilActive])
+    if (targetScreen === screen) return
+    
+    // 1. Instantly snap the scrollbar to the top
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    
+    // 2. Instantly swap the React component
+    setScreen(targetScreen)
+  }
 
   return (
-    <>
-      <AnimatePresence mode="wait">
-        {screen === 'hero' && <HeroScreen key="hero" onNavigate={navigate} />}
-        {screen === 'menu' && <MenuScreen key="menu" onNavigate={navigate} />}
-        {screen === 'vibe' && <VibeScreen key="vibe" onNavigate={navigate} />}
-      </AnimatePresence>
-      <TransitionVeil active={veilActive} />
-    </>
+    /* 🧠 Wrapped the main router directly so all screens share the same memory */
+    <CartProvider>
+      <main className="bg-[#FAF9F6] min-h-screen">
+        {screen === 'hero' && <HeroScreen onNavigate={navigate} />}
+        {screen === 'menu' && <MenuScreen onNavigate={navigate} />}
+        
+        {/* ✨ 2. Added the Vibe Screen route */}
+        {screen === 'vibe' && <VibeScreen onNavigate={navigate} />}
+      </main>
+    </CartProvider>
   )
 }

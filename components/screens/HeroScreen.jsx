@@ -1,30 +1,25 @@
 'use client'
-
-import React, { useEffect, useRef, useState } from 'react'
-import { gsap } from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { motion } from 'framer-motion'
+import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 const EASE = [0.16, 1, 0.3, 1]
 
 export default function HeroScreen({ onNavigate }) {
-  // Refs for the architecture pieces
-  const heroRef = useRef(null)        // 300vh trigger container
-  const stickyRef = useRef(null)      // sticky 100vh pinned container
-  const canvasRef = useRef(null)      // <canvas> element replacing video
-  const menuRef = useRef(null)        // handoff menu section
-  const indicatorRef = useRef(null)   // "scroll to enter" cue
+  const heroRef = useRef(null)        
+  const stickyRef = useRef(null)      
+  const canvasRef = useRef(null)      
+  const menuRef = useRef(null)        
+  const indicatorRef = useRef(null)   
 
   const [videoReady, setVideoReady] = useState(false)
-  const frameCount = 178; // Exact frames from FFmpeg
+  const frameCount = 178; 
 
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    // Register the plugin
     gsap.registerPlugin(ScrollTrigger)
-
-    // Always start the experience from the top
     window.scrollTo({ top: 0, behavior: 'auto' })
 
     const canvas = canvasRef.current
@@ -36,11 +31,9 @@ export default function HeroScreen({ onNavigate }) {
 
     const context = canvas.getContext("2d");
     
-    // Set native resolution of your AI video frames
     canvas.width = 720;
     canvas.height = 1280;
 
-    // Preload the image sequence
     const images = [];
     const sequence = { frame: 0 };
     let loadedCount = 0;
@@ -53,7 +46,6 @@ export default function HeroScreen({ onNavigate }) {
       img.src = currentFrame(i);
       img.onload = () => {
         loadedCount++;
-        // Draw the first frame immediately when it loads
         if (loadedCount === 1) {
           context.drawImage(images[0], 0, 0, canvas.width, canvas.height);
           setVideoReady(true);
@@ -62,29 +54,24 @@ export default function HeroScreen({ onNavigate }) {
       images.push(img);
     }
 
-    // Holders for cleanup
     let videoTimeline = null
     let menuTween = null
     let indicatorTween = null
     let refreshTimer = null
 
-    // ─────────────────────────────────────────────
-    // The Flipbook Scrub Timeline
-    // ─────────────────────────────────────────────
     videoTimeline = gsap.timeline({
       scrollTrigger: {
         trigger: hero,
         start: 'top top',
         end: 'bottom bottom',
-        scrub: 1,                    // 1s catch-up — heavy & expensive feel
-        pin: sticky,                 // pin the sticky 100vh container
-        pinSpacing: false,           // menu sits right under the pin release
-        anticipatePin: 1,            // smoother pin on mobile
+        scrub: 1,                    
+        pin: sticky,                 
+        pinSpacing: false,           
+        anticipatePin: 1,            
         invalidateOnRefresh: true,
       },
     })
 
-    // Scrub the sequence from 0 to 177
     videoTimeline.to(
       sequence,
       {
@@ -100,9 +87,6 @@ export default function HeroScreen({ onNavigate }) {
       0
     )
 
-    // ─────────────────────────────────────────────
-    // The Mobile Handoff (Emergent's exact logic)
-    // ─────────────────────────────────────────────
     if (menu) {
       gsap.set(menu, { y: 80 })
       menuTween = gsap.to(menu, {
@@ -110,7 +94,7 @@ export default function HeroScreen({ onNavigate }) {
         ease: 'none',
         scrollTrigger: {
           trigger: hero,
-          start: 'bottom 110%',  // begins ~20% before the hero ends
+          start: 'bottom 110%',  
           end: 'bottom bottom',
           scrub: 1,
           invalidateOnRefresh: true,
@@ -118,7 +102,6 @@ export default function HeroScreen({ onNavigate }) {
       })
     }
 
-    // Fade out the scroll indicator
     if (indicatorRef.current) {
       indicatorTween = gsap.to(indicatorRef.current, {
         opacity: 0,
@@ -133,12 +116,8 @@ export default function HeroScreen({ onNavigate }) {
       })
     }
 
-    // Refresh after fonts / layout settle
     refreshTimer = window.setTimeout(() => ScrollTrigger.refresh(), 250)
 
-    // ─────────────────────────────────────────────
-    // Cleanup
-    // ─────────────────────────────────────────────
     return () => {
       if (refreshTimer) clearTimeout(refreshTimer)
       if (videoTimeline) {
@@ -165,52 +144,35 @@ export default function HeroScreen({ onNavigate }) {
       transition={{ duration: 0.7, ease: EASE }}
       className="relative bg-[#FAF9F6] font-sans"
     >
-      {/* ============================================== */}
-      {/* HERO — 300vh trigger container                  */}
-      {/* ============================================== */}
       <section
         ref={heroRef}
         className="relative w-full"
         style={{ height: '300vh' }}
-        aria-label="Cinematic introduction"
       >
-        {/* Pinned 100vh sticky container — overflow hidden */}
         <div
           ref={stickyRef}
           className="sticky top-0 h-screen w-full overflow-hidden bg-black"
-          style={{
-            willChange: 'transform',
-            transform: 'translateZ(0)',
-          }}
+          style={{ willChange: 'transform', transform: 'translateZ(0)' }}
         >
-          {/* THE ENTERPRISE FLIPBOOK FIX */}
           <canvas
             ref={canvasRef}
             className="absolute inset-0 h-full w-full object-cover"
-            style={{
-              willChange: 'transform',
-              transform: 'translateZ(0)',
-            }}
+            style={{ willChange: 'transform', transform: 'translateZ(0)' }}
           />
 
-          {/* Subtle cinematic gradient for text legibility */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
-              background:
-                'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0.25) 65%, rgba(0,0,0,0.55) 100%)',
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.15) 35%, rgba(0,0,0,0.25) 65%, rgba(0,0,0,0.55) 100%)',
             }}
           />
-          {/* Vignette */}
           <div
             className="pointer-events-none absolute inset-0"
             style={{
-              background:
-                'radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.45) 100%)',
+              background: 'radial-gradient(ellipse at center, rgba(0,0,0,0) 55%, rgba(0,0,0,0.45) 100%)',
             }}
           />
 
-          {/* Top brand mark */}
           <div className="absolute top-0 left-0 right-0 z-10 flex items-center justify-between px-6 py-6">
             <div className="flex items-center gap-2">
               <div className="h-px w-6 bg-[#C5A880]/80" />
@@ -223,7 +185,6 @@ export default function HeroScreen({ onNavigate }) {
             </span>
           </div>
 
-          {/* Center title */}
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center">
             <p className="text-[9px] tracking-[0.55em] uppercase text-[#C5A880] mb-6 shimmer" style={{ fontWeight: 400 }}>
               — A Quiet Indulgence —
@@ -247,7 +208,6 @@ export default function HeroScreen({ onNavigate }) {
             </div>
           </div>
 
-          {/* Scroll-to-enter indicator */}
           <div
             ref={indicatorRef}
             className="absolute bottom-10 left-1/2 z-10 -translate-x-1/2 flex flex-col items-center gap-3"
@@ -260,7 +220,6 @@ export default function HeroScreen({ onNavigate }) {
             </div>
           </div>
 
-          {/* States */}
           {!videoReady && (
             <div className="absolute bottom-3 right-3 z-10 text-[9px] tracking-[0.3em] uppercase text-white/40">
               Preparing…
@@ -269,15 +228,11 @@ export default function HeroScreen({ onNavigate }) {
         </div>
       </section>
 
-      {/* ============================================== */}
-      {/* MENU HANDOFF — glides up over the pinned video  */}
-      {/* ============================================== */}
       <section
         ref={menuRef}
-        className="relative z-20 -mt-10 rounded-t-3xl bg-[#FAF9F6]"
+        className="relative z-20 -mt-10 rounded-t-3xl bg-[#FAF9F6] pb-24"
         style={{
-          boxShadow:
-            '0 -30px 60px -20px rgba(62, 54, 46, 0.25), 0 -2px 0 0 rgba(197, 168, 128, 0.15)',
+          boxShadow: '0 -30px 60px -20px rgba(62, 54, 46, 0.25), 0 -2px 0 0 rgba(197, 168, 128, 0.15)',
           willChange: 'transform',
         }}
       >
@@ -285,7 +240,7 @@ export default function HeroScreen({ onNavigate }) {
           <div className="h-[3px] w-12 rounded-full bg-[#C5A880]/40" />
         </div>
 
-        <div className="px-6 pt-14 pb-20">
+        <div className="px-6 pt-14">
           <div className="flex items-center justify-center gap-3 mb-5">
             <span className="h-px w-8 bg-[#C5A880]/60" />
             <span className="text-[9px] tracking-[0.55em] uppercase text-[#C5A880]" style={{ fontWeight: 500 }}>
@@ -312,25 +267,27 @@ export default function HeroScreen({ onNavigate }) {
             something in harmony with your mood.
           </p>
 
-          <div className="mt-12 flex flex-col gap-4">
+          <div className="mt-12 flex flex-col gap-4 relative z-50">
+            {/* BUTTON 1: Standard Menu */}
             <button
               onClick={() => onNavigate('menu')}
               className="group relative w-full overflow-hidden rounded-full bg-[#3E362E] px-8 py-5 text-[#C5A880] transition-all duration-500 hover:bg-[#2c2620] active:scale-[0.98]"
               style={{ fontWeight: 300 }}
             >
-              <span className="relative z-10 flex items-center justify-center gap-3">
+              <span className="relative z-10 flex items-center justify-center gap-3 pointer-events-none">
                 <span className="h-px w-5 bg-[#C5A880]/60 transition-all duration-500 group-hover:w-8" />
                 <span className="text-[11px] tracking-[0.5em] uppercase">Standard Menu</span>
                 <span className="h-px w-5 bg-[#C5A880]/60 transition-all duration-500 group-hover:w-8" />
               </span>
             </button>
 
+            {/* BUTTON 2: Match My Vibe */}
             <button
               onClick={() => onNavigate('vibe')}
               className="group relative w-full overflow-hidden rounded-full border border-[#C5A880] bg-transparent px-8 py-5 text-[#3E362E] transition-all duration-500 hover:bg-[#C5A880]/10 active:scale-[0.98]"
               style={{ fontWeight: 300 }}
             >
-              <span className="relative z-10 flex items-center justify-center gap-3">
+              <span className="relative z-10 flex items-center justify-center gap-3 pointer-events-none">
                 <span className="h-px w-5 bg-[#3E362E]/30 transition-all duration-500 group-hover:w-8" />
                 <span className="text-[11px] tracking-[0.5em] uppercase">Match My Vibe</span>
                 <span className="h-px w-5 bg-[#3E362E]/30 transition-all duration-500 group-hover:w-8" />
