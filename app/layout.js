@@ -37,7 +37,7 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en" className={`${playfair.variable} ${cormorant.variable} ${inter.variable}`}>
-      <body className="antialiased bg-black text-[#3E362E] min-h-screen">
+      <body className="antialiased bg-black text-[#3E362E] min-h-screen" suppressHydrationWarning>
         {/* Desktop ambient backdrop — only visible behind the mobile frame */}
         <div className="fixed inset-0 -z-10 hidden md:block" aria-hidden="true">
           <div

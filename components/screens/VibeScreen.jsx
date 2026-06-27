@@ -14,24 +14,24 @@ const moods = [
   { id: 'm_clean', emoji: '🌿', title: 'Clean & Serene', subtitle: 'Fresh, vibrant, and guilt-free.' }
 ]
 
-// 2. THE CURATED ITEMS (Step 2)
+// 2. THE CURATED ITEMS (Step 2) mapped to your WebP images
 const vibeItems = {
   'm_date': [
-    { id: 'v_dn1', title: 'The Romance Duo', description: 'Truffle Mushroom Risotto & Classic Chicken Alfredo. Rich, creamy, and perfect for sharing.', price: '₹1130', diet: 'non-veg' },
-    { id: 'v_dn2', title: 'Midnight Sweetheart', description: 'Classic Basque Cheesecake paired with two glasses of Fresh Peach Iced Tea.', price: '₹950', diet: 'veg' },
+    { id: 'v_dn1', title: 'The Romance Duo', description: 'Truffle Mushroom Risotto & Classic Chicken Alfredo. Rich, creamy, and perfect for sharing.', price: '₹1130', diet: 'non-veg', image: 'Truffle_Mushroom_Risotto.webp' },
+    { id: 'v_dn2', title: 'Midnight Sweetheart', description: 'Classic Basque Cheesecake paired with two glasses of Fresh Peach Iced Tea.', price: '₹950', diet: 'veg', image: 'Classic_Basque_Cheesecake.webp' },
   ],
   'm_hang': [
-    { id: 'v_ho1', title: 'The Catch-Up Platter', description: 'Artisanal Burrata Margherita, Honey Sriracha Wings, and Parmesan Truffle Fries.', price: '₹1348', diet: 'non-veg' },
-    { id: 'v_ho2', title: 'Crisp & Chill', description: 'Crispy Calamari Rings and Pull-Apart Garlic Bread for the table.', price: '₹798', diet: 'non-veg' },
+    { id: 'v_ho1', title: 'The Catch-Up Platter', description: 'Artisanal Burrata Margherita, Honey Sriracha Wings, and Parmesan Truffle Fries.', price: '₹1348', diet: 'non-veg', image: 'Artisanal_Burrata_Margherita.webp' },
+    { id: 'v_ho2', title: 'Crisp & Chill', description: 'Crispy Calamari Rings and Pull-Apart Garlic Bread for the table.', price: '₹798', diet: 'non-veg', image: 'Crispy_Calamari_Rings.webp' },
   ],
   'm_work': [
-    { id: 'v_dw1', title: 'The Focus Fuel', description: 'Our signature Pasay Cold Brew paired with a nutrient-dense Smashed Avocado Sourdough.', price: '₹649', diet: 'veg' },
+    { id: 'v_dw1', title: 'The Focus Fuel', description: 'Our signature Pasay Cold Brew paired with a nutrient-dense Smashed Avocado Sourdough.', price: '₹649', diet: 'veg', image: 'Pasay_Cold_Brew.webp' },
   ],
   'm_hurt': [
-    { id: 'v_hr1', title: 'Sweet Comfort', description: 'Classic Basque Cheesecake, Dark Chocolate Sea Salt Cookie, and Signature Hot Chocolate.', price: '₹950', diet: 'veg' },
+    { id: 'v_hr1', title: 'Sweet Comfort', description: 'Classic Basque Cheesecake, Dark Chocolate Sea Salt Cookie, and Signature Hot Chocolate.', price: '₹950', diet: 'veg', image: 'Signature_Hot_Chocolate.webp' }, // Ensure cookie and hot chocolate image mapping fits your preference
   ],
   'm_clean': [
-    { id: 'v_cs1', title: 'The Reset', description: 'Chilled Acai Superfood Bowl and a Fresh Watermelon Mint Cooler.', price: '₹779', diet: 'vegan' },
+    { id: 'v_cs1', title: 'The Reset', description: 'Chilled Acai Superfood Bowl and a Fresh Watermelon Mint Cooler.', price: '₹779', diet: 'vegan', image: 'Chilled_Acai_Superfood_Bowl.webp' },
   ]
 }
 
@@ -165,12 +165,13 @@ export default function VibeScreen({ onNavigate }) {
                           >
                             <div className="pb-6 flex flex-col gap-5">
                               
-                              {/* 📸 IMAGE PLACEHOLDER (Matches Standard Menu) */}
-                              <div className="w-full h-48 bg-[#FAF9F6]/5 rounded-xl border border-[#FAF9F6]/10 flex flex-col items-center justify-center gap-2">
-                                <span className="text-2xl opacity-50">📷</span>
-                                <span className="text-[#FAF9F6]/30 text-[9px] tracking-[0.2em] uppercase font-bold">
-                                  Image Loads Here
-                                </span>
+                              {/* 📸 THE REAL IMAGE BLOCK */}
+                              <div className="relative w-full h-48 rounded-xl overflow-hidden border border-[#FAF9F6]/10 bg-black/20">
+                                <img 
+                                  src={`/images/${item.image}`} 
+                                  alt={item.title}
+                                  className="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-700 hover:scale-105"
+                                />
                               </div>
 
                               <p className="text-xs text-[#FAF9F6]/70 leading-relaxed">
